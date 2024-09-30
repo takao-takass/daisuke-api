@@ -1,7 +1,7 @@
 # このアプリケーションについて
 
 ## 概要
-daisukeは、AIチャットアプリです。daisuke-apiは、daisukeのAPIサーバーを提供します。
+daisukeは、AIチャットアプリです。TAKAHIRO TADAによって実験的な機能が追加されることがあります。daisuke-apiは、daisukeのAPIサーバーを提供します。
 
 ## 技術スタック
 - Python
