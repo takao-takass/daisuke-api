@@ -1,11 +1,24 @@
 from asyncio import sleep
 import json
 from openai import OpenAI
+from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 app = FastAPI()
+
+class GptRequest(BaseModel):
+    """
+    GPTに質問するためのリクエストボディ
+    """
+    prompt: str
+
+class DalleRequest(BaseModel):
+    """
+    DALL-Eで画像生成するためのリクエストボディ
+    """
+    prompt: str
 
 @app.get("/")
 def read_root():
@@ -15,7 +28,7 @@ def read_root():
     return "DAISUKE is here!"
 
 @app.post("/test/gpt")
-def test_gpt():
+def test_gpt(gpt_request: GptRequest):
     """
     GPTモデルのテスト用エンドポイント
     """
@@ -33,7 +46,7 @@ def test_gpt():
         stream = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "user", "content": "C#でfizz buzzを作ってください"}
+                {"role": "user", "content": gpt_request.prompt}
             ],
             stream=True,
         )
@@ -73,7 +86,7 @@ def test_reasoning():
     return response.choices[0].message.content
 
 @app.post("/test/image")
-def test_image():
+def test_image(dalle_request: DalleRequest):
     """
     画像生成のテスト用エンドポイント
     """
@@ -89,7 +102,7 @@ def test_image():
 
     response = openai.images.generate(
         model="dall-e-3",
-        prompt="a white siamese cat",
+        prompt=dalle_request.prompt,
         size="1024x1024",
         quality="standard",
         n=1,
@@ -115,7 +128,7 @@ async def test_server_send_event():
     return StreamingResponse(waypoints_generator(), media_type="text/event-stream")
 
 @app.post("/test/sse_gpt")
-async def test_server_send_event_gpt():
+async def test_server_send_event_gpt(gpt_request: GptRequest):
     """
     GPTの回答をServer-Sent Eventsでストリーミングするテスト用エンドポイント
     """
@@ -133,7 +146,7 @@ async def test_server_send_event_gpt():
         stream = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "user", "content": "こんにちは！いい天気ですね！！"}
+                {"role": "user", "content": gpt_request.prompt}
             ],
             stream=True,
         )
