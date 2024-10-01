@@ -1,5 +1,7 @@
+from asyncio import sleep
 import json
 from openai import OpenAI
+from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
@@ -21,15 +23,14 @@ def test_gpt():
     with open('secret.json', encoding="utf-8") as f:
         secret = json.load(f)
 
-    # クライアントを作成
-    client = OpenAI(
+    openai = OpenAI(
         organization=secret['organization'],
         project=secret['project'],
         api_key=secret['api_key'],
     )
 
     def generate():
-        stream = client.chat.completions.create(
+        stream = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "user", "content": "C#でfizz buzzを作ってください"}
@@ -53,14 +54,13 @@ def test_reasoning():
     with open('secret.json', encoding="utf-8") as f:
         secret = json.load(f)
 
-    # クライアントを作成
-    client = OpenAI(
+    openai = OpenAI(
         organization=secret['organization'],
         project=secret['project'],
         api_key=secret['api_key'],
     )
 
-    response = client.chat.completions.create(
+    response = openai.chat.completions.create(
         model="o1-preview",
         messages=[
             {
@@ -81,13 +81,13 @@ def test_image():
     with open('secret.json', encoding="utf-8") as f:
         secret = json.load(f)
 
-    client = OpenAI(
+    openai = OpenAI(
         organization=secret['organization'],
         project=secret['project'],
         api_key=secret['api_key'],
     )
 
-    response = client.images.generate(
+    response = openai.images.generate(
         model="dall-e-3",
         prompt="a white siamese cat",
         size="1024x1024",
@@ -96,3 +96,50 @@ def test_image():
     )
 
     return response.data[0].url
+
+
+@app.post("/test/sse")
+async def test_server_send_event():
+    """
+    Server-Sent Eventsのテスト用エンドポイント
+    """
+
+    async def waypoints_generator():
+        waypoints = open('waypoints.json', encoding="utf-8")
+        waypoints = json.load(waypoints)
+        for waypoint in waypoints[0: 10]:
+            data = json.dumps(waypoint)
+            yield f"event: locationUpdate\ndata: {data}\n\n"
+            await sleep(1)
+
+    return StreamingResponse(waypoints_generator(), media_type="text/event-stream")
+
+@app.post("/test/sse_gpt")
+async def test_server_send_event_gpt():
+    """
+    GPTの回答をServer-Sent Eventsでストリーミングするテスト用エンドポイント
+    """
+
+    with open('secret.json', encoding="utf-8") as f:
+        secret = json.load(f)
+
+    openai = OpenAI(
+        organization=secret['organization'],
+        project=secret['project'],
+        api_key=secret['api_key'],
+    )
+
+    async def generate():
+        stream = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": "こんにちは！いい天気ですね！！"}
+            ],
+            stream=True,
+        )
+
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                yield chunk.choices[0].delta.content
+
+    return EventSourceResponse(generate())
