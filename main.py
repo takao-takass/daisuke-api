@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+import mariadb
 
 app = FastAPI()
 
@@ -156,3 +157,48 @@ async def test_server_send_event_gpt(gpt_request: GptRequest):
                 yield chunk.choices[0].delta.content
 
     return EventSourceResponse(generate())
+
+
+@app.post("/test/mariadb")
+async def test_mariadb():
+    """
+    Maria DBのテスト用エンドポイント
+    """
+    with open('secret.json', encoding="utf-8") as f:
+        secret = json.load(f)
+
+    with mariadb.connect(
+        user=secret['db_user'],
+        password=secret['db_password'],
+        host=secret['db_host'],
+        port=secret['db_port'],
+        database=secret['db_name']
+    ) as conn:
+
+        with conn.cursor() as cur:
+
+            conversation_id = 1
+            sequence = 999
+            cur.execute(
+                """
+                INSERT INTO conversation_posts (conversation_id, `sequence`, `role`, message) 
+                VALUES(?, ?, 'User', 'こんにちは。');
+                """,
+                (conversation_id, sequence))
+
+            cur.execute('COMMIT')
+
+            cur.execute(
+                """
+                SELECT role, message 
+                FROM conversation_posts
+                WHERE conversation_id = ?
+                ORDER BY posted_at
+                """ ,
+                (conversation_id,))
+
+            result = ""
+            for (role, message) in cur:
+                result += f"{role}: {message}\n"
+
+    return result
