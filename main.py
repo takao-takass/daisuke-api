@@ -52,9 +52,39 @@ def test_gpt(gpt_request: GptRequest):
             stream=True,
         )
 
+        content_full = ''
         for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                yield chunk.choices[0].delta.content
+            content = chunk.choices[0].delta.content
+            if content is None:
+                continue
+            content_full += content
+            yield content
+
+        with mariadb.connect(
+            user=secret['db_user'],
+            password=secret['db_password'],
+            host=secret['db_host'],
+            port=secret['db_port'],
+            database=secret['db_name']
+        ) as conn:
+
+            with conn.cursor() as cur:
+                conversation_id = 1
+                sequence = 999
+                cur.execute(
+                    """
+                    INSERT INTO conversation_posts (conversation_id, `sequence`, `role`, message) 
+                    VALUES(?, ?, 'User', ?);
+                    """,
+                    (conversation_id, sequence, gpt_request.prompt))
+                cur.execute(
+                    """
+                    INSERT INTO conversation_posts (conversation_id, `sequence`, `role`, message) 
+                    VALUES(?, ?, 'Assistant', ?);
+                    """,
+                    (conversation_id, sequence, content_full))
+
+                cur.execute('COMMIT')
 
     return StreamingResponse(generate(), media_type="text/plain")
 
@@ -152,9 +182,39 @@ async def test_server_send_event_gpt(gpt_request: GptRequest):
             stream=True,
         )
 
+        content_full = ''
         for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                yield chunk.choices[0].delta.content
+            content = chunk.choices[0].delta.content
+            if content is None:
+                continue
+            content_full += content
+            yield content
+
+        with mariadb.connect(
+            user=secret['db_user'],
+            password=secret['db_password'],
+            host=secret['db_host'],
+            port=secret['db_port'],
+            database=secret['db_name']
+        ) as conn:
+
+            with conn.cursor() as cur:
+                conversation_id = 1
+                sequence = 999
+                cur.execute(
+                    """
+                    INSERT INTO conversation_posts (conversation_id, `sequence`, `role`, message) 
+                    VALUES(?, ?, 'User', ?);
+                    """,
+                    (conversation_id, sequence, gpt_request.prompt))
+                cur.execute(
+                    """
+                    INSERT INTO conversation_posts (conversation_id, `sequence`, `role`, message) 
+                    VALUES(?, ?, 'Assistant', ?);
+                    """,
+                    (conversation_id, sequence, content_full))
+
+                cur.execute('COMMIT')
 
     return EventSourceResponse(generate())
 
