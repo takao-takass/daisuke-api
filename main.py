@@ -5,9 +5,23 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 import mariadb
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000" 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 user_id = 1
 
@@ -60,6 +74,41 @@ def create_conversation():
             return {"conversation_id": conversation_id}
 
 @app.post("/conversation/message")
+def post_message(gpt_request: GptRequest):
+    """
+    会話でメッセージを送信するためのエンドポイント
+    """
+
+    with mariadb.connect(
+        user=secret['db_user'],
+        password=secret['db_password'],
+        host=secret['db_host'],
+        port=secret['db_port'],
+        database=secret['db_name']
+    ) as conn:
+
+        with conn.cursor() as cur:
+            conversation_id = get_conversation_id(user_id, cur)
+            cur.execute(
+                """
+                SELECT `role` , message 
+                FROM conversation_posts
+                WHERE conversation_id = ?
+                ORDER BY posted_at;
+                """,
+                (conversation_id,))
+
+            messages = []
+            for (role, message) in cur:
+                # Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.
+                messages.append({"role": role, "content": message})
+
+            return StreamingResponse(
+                generate("gpt-4o-mini", conversation_id, messages, gpt_request.prompt),
+                media_type="text/plain")
+
+
+@app.post("/conversation/messageStream")
 def post_message(gpt_request: GptRequest):
     """
     会話でメッセージを送信するためのエンドポイント
