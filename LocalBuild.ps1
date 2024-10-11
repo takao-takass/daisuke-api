@@ -1,5 +1,5 @@
 $imageName = "takao0119/daisuke-api"
-$currentDateTime = Get-Date -Format "yyyyMMdd_HHmmss"
+$currentDateTime = "latest"#Get-Date -Format "yyyyMMdd_HHmmss"
 $tag = "${imageName}:${currentDateTime}"
 
 docker build -t $tag .
