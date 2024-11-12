@@ -1,5 +1,4 @@
 import os
-import json
 from openai import OpenAI
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
@@ -32,13 +31,13 @@ secret = {
     "db_user": "root",
     "db_host": "localhost",
     "db_password": "password",
-    "db_port": 3306,
+    "db_port": "3306",
     "db_name": "chat"
 }
 
-secret['organization'] = os.getenv('ORGANIZATION', secret['organization'])
-secret['project'] = os.getenv('PROJECT', secret['project'])
-secret['api_key'] = os.getenv('API_KEY', secret['api_key'])
+secret['organization'] = os.getenv('OPENAI_ORGANIZATION', secret['organization'])
+secret['project'] = os.getenv('OPENAI_PROJECT', secret['project'])
+secret['api_key'] = os.getenv('OPENAI_API_KEY', secret['api_key'])
 secret['db_user'] = os.getenv('DB_USER', secret['db_user'])
 secret['db_host'] = os.getenv('DB_HOST', secret['db_host'])
 secret['db_password'] = os.getenv('DB_PASSWORD', secret['db_password'])
