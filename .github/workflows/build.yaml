@@ -35,4 +35,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/your-repo-name:${{ steps.vars.outputs.short_sha }}
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/daisuke-api:${{ steps.vars.outputs.short_sha }}
