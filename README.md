@@ -12,3 +12,6 @@ daisukeは、AIチャットアプリです。TAKAHIRO TADAによって実験的�
 - Python
 - FastAPI
 - OpenAPI
+
+## Kubernetesマニフェスト
+🔒Secret : https://github.com/takao-takass/daisuke-api-k8s
