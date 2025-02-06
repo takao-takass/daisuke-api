@@ -5,7 +5,11 @@ from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from enum import Enum
 import mariadb
+
+class UseType(Enum):
+    TEXT_GENERATION = 1
 
 app = FastAPI()
 
@@ -115,8 +119,10 @@ def post_message(gpt_request: GptRequest):
                 # Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.
                 messages.append({"role": role, "content": message})
 
+            model = get_model(user_id, UseType.TEXT_GENERATION, cur)
+
             return StreamingResponse(
-                generate("gpt-4o-mini", conversation_id, messages, gpt_request.prompt),
+                generate(model, conversation_id, messages, gpt_request.prompt),
                 media_type="text/plain")
 
 
@@ -142,8 +148,10 @@ def post_message(gpt_request: GptRequest):
             for (role, message) in cur:
                 # Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.
                 messages.append({"role": role, "content": message})
+    
+            model = get_model(user_id, UseType.TEXT_GENERATION, cur)
 
-            return EventSourceResponse(generate("gpt-4o-mini", conversation_id, messages, gpt_request.prompt))
+            return EventSourceResponse(generate(model, conversation_id, messages, gpt_request.prompt))
 
 async def generate(model:str, conversation_id:int, messages:list, prompt:str):
     """
@@ -198,3 +206,21 @@ def get_conversation_id(user_id : int, cur : mariadb.Cursor) -> int:
 
     for (id) in cur:
         return id[0]
+
+def get_model(user_id : int, use_type : UseType, cur : mariadb.Cursor) -> str:
+    """
+    ユーザーIDからモデル名を取得する
+    """
+    cur.execute(
+        """
+        SELECT model_for_text_generation
+        FROM use_models
+        WHERE user_id = ?;
+        """,
+        (user_id,))
+
+    for (model_for_text_generation) in cur:
+        if use_type == UseType.TEXT_GENERATION:
+            return model_for_text_generation[0]
+
+        return "gpt-4o-mini"
