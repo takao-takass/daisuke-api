@@ -6,12 +6,8 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from enum import Enum
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Session
 import mariadb
+from database.database import SessionLocal, Conversation, DATABASE_URL  # Import from database.py
 
 class UseType(Enum):
     TEXT_GENERATION = 1
@@ -21,7 +17,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.1.30:30003" 
+    "http://192.168.1.30:30003"
 ]
 
 app.add_middleware(
@@ -68,28 +64,11 @@ openai = OpenAI(
     api_key=secret['api_key'],
 )
 
-DATABASE_URL = f"mysql+pymysql://{conn_params['user']}:{conn_params['password']}@{conn_params['host']}/{conn_params['database']}"
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=engine)
-Base = declarative_base()
-
 class GptRequest(BaseModel):
     """
     GPTに質問するためのリクエストボディ
     """
     prompt: str
-
-# class DalleRequest(BaseModel):
-#     """
-#     DALL-Eで画像生成するためのリクエストボディ
-#     """
-#     prompt: str
-
-class Conversation(Base):
-    __tablename__ = "conversations"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True)
-    model_name = Column(String, index=False)
 
 @app.put("/conversation")
 def create_conversation():
@@ -101,7 +80,7 @@ def create_conversation():
         db_conversation = Conversation(user_id=user_id, model_name="")
         db.add(db_conversation)
         db.commit()
-        #db.refresh(db_conversation)
+        db.refresh(db_conversation)
 
     finally:
         db.close()
@@ -136,7 +115,6 @@ def post_message(gpt_request: GptRequest):
             return StreamingResponse(
                 generate(model, conversation_id, messages, gpt_request.prompt),
                 media_type="text/plain")
-
 
 @app.post("/conversation/messageStream")
 def post_message(gpt_request: GptRequest):
@@ -202,7 +180,6 @@ async def generate(model:str, conversation_id:int, messages:list, prompt:str):
                 """,
                 (conversation_id, content_full))
             cur.execute('COMMIT')
-
 
 def get_conversation_id(user_id : int, cur : mariadb.Cursor) -> int:
     """
