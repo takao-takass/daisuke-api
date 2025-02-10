@@ -6,6 +6,11 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from enum import Enum
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import Session
 import mariadb
 
 class UseType(Enum):
@@ -63,6 +68,11 @@ openai = OpenAI(
     api_key=secret['api_key'],
 )
 
+DATABASE_URL = f"mysql+pymysql://{conn_params['user']}:{conn_params['password']}@{conn_params['host']}/{conn_params['database']}"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=engine)
+Base = declarative_base()
+
 class GptRequest(BaseModel):
     """
     GPTに質問するためのリクエストボディ
@@ -75,26 +85,28 @@ class GptRequest(BaseModel):
 #     """
 #     prompt: str
 
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    model_name = Column(String, index=False)
+
 @app.put("/conversation")
 def create_conversation():
     """
     新しい会話を始めるためのエンドポイント
     """
-    with mariadb.connect(**conn_params) as conn:
+    try:
+        db = SessionLocal()
+        db_conversation = Conversation(user_id=user_id, model_name="")
+        db.add(db_conversation)
+        db.commit()
+        #db.refresh(db_conversation)
 
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO conversations (user_id) 
-                VALUES(?);
-                """,
-                (user_id,))
+    finally:
+        db.close()
 
-            cur.execute('COMMIT')
-
-            conversation_id = get_conversation_id(user_id, cur)
-
-            return {"conversation_id": conversation_id}
+    return {"conversation_id": db_conversation.id}
 
 @app.post("/conversation/message")
 def post_message(gpt_request: GptRequest):

@@ -3,3 +3,5 @@ fastapi
 uvicorn
 sse-starlette
 mariadb
+sqlalchemy
+pymysql
