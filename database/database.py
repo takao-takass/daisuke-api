@@ -17,8 +17,8 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-class Conversation(Base):
-    __tablename__ = "conversations"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True)
-    model_name = Column(String, index=False)
+# class Conversation(Base):
+#     __tablename__ = "conversations"
+#     id = Column(Integer, primary_key=True, index=True)
+#     user_id = Column(Integer, index=True)
+#     model_name = Column(String, index=False)

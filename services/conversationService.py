@@ -1,6 +1,51 @@
+from typing import AsyncGenerator
+import mariadb
+from config import conn_params
+from database.database import SessionLocal
+from database.tables.Conversation import Conversation
 import mariadb
 from config import conn_params, secret
 from openai import OpenAI
+
+def create_conversation(user_id:int) -> int:
+    """
+    新しい会話スレッドを開始します
+    """
+    try:
+        db = SessionLocal()
+        db_conversation = Conversation(user_id=user_id, model_name="")
+        db.add(db_conversation)
+        db.commit()
+        db.refresh(db_conversation)
+    finally:
+        db.close()
+
+    return db_conversation.id
+
+def post_message(prompt: str) -> AsyncGenerator[str, None]:
+    """
+    LLMにメッセージを送信します
+    """
+    with mariadb.connect(**conn_params) as conn:
+        with conn.cursor() as cur:
+            conversation_id = get_conversation_id(1, cur)
+            cur.execute(
+                """
+                SELECT `role` , message 
+                FROM conversation_posts
+                WHERE conversation_id = ?
+                ORDER BY posted_at;
+                """,
+                (conversation_id,))
+
+            messages = []
+            for (role, message) in cur:
+                messages.append({"role": role, "content": message})
+
+            model = get_model(1, cur)
+
+            return generate(model, conversation_id, messages, prompt)
+        
 
 openai = OpenAI(
     organization=secret['organization'],
