@@ -12,6 +12,25 @@ daisukeは、AIチャットアプリです。TAKAHIRO TADAによって実験的�
 - Python
 - FastAPI
 - OpenAPI
+- SQL Alchemy
+- Alembic
 
 ## Kubernetesマニフェスト
 🔒Secret : https://github.com/takao-takass/daisuke-api-k8s
+
+# データベースのマイグレーションコマンド
+
+マイグレーションに追加
+```bash
+alembic revision --autogenerate -m "メッセージ"
+```
+
+マイグレーションを適用
+```bash
+alembic upgrade head
+```
+
+マイグレーションを巻き戻す
+```bash
+alembic downgrade -1
+```
