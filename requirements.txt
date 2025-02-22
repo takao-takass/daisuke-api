@@ -6,3 +6,4 @@ mariadb
 sqlalchemy
 pymysql
 python-multipart
+alembic
